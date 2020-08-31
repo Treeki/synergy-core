@@ -101,8 +101,7 @@ OSXUchrKeyResource::isValid() const
 UInt32
 OSXUchrKeyResource::getNumModifierCombinations() const
 {
-    // only 32 (not 256) because the righthanded modifier bits are ignored
-    return 32;
+    return 256;
 }
 
 UInt32

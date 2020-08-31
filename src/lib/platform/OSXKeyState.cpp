@@ -102,18 +102,17 @@ static const KeyEntry    s_controlKeys[] = {
     // to map to.  also the enter key with numlock on is a modifier but i
     // don't know which.
 
-    // modifier keys.  OS X doesn't seem to support right handed versions
-    // of modifier keys so we map them to the left handed versions.
-    { kKeyShift_L,        s_shiftVK },
-    { kKeyShift_R,        s_shiftVK }, // 60
-    { kKeyControl_L,    s_controlVK },
-    { kKeyControl_R,    s_controlVK }, // 62
-    { kKeyAlt_L,        s_altVK },
-    { kKeyAlt_R,        s_altVK },
-    { kKeySuper_L,        s_superVK },
-    { kKeySuper_R,        s_superVK }, // 61
-    { kKeyMeta_L,        s_superVK },
-    { kKeyMeta_R,        s_superVK }, // 61
+    { kKeyShift_L,        kVK_Shift },
+    { kKeyShift_R,        kVK_RightShift }, // 60
+    { kKeyControl_L,    kVK_Control },
+    { kKeyControl_R,    kVK_RightControl }, // 62
+    { kKeyAlt_L,        kVK_Option },
+    { kKeyAlt_R,        kVK_RightOption },
+    { kKeySuper_L,        kVK_Command },
+    { kKeySuper_R,        kVK_RightCommand }, // 61
+    { kKeyMeta_L,        kVK_Command },
+    { kKeyMeta_R,        kVK_RightCommand }, // 61
+    { kKeyAltGr,         kVK_RightOption },
 
     // toggle modifiers
     { kKeyNumLock,        s_numLockVK },
@@ -150,10 +149,14 @@ void
 OSXKeyState::init()
 {
     m_deadKeyState = 0;
-    m_shiftPressed = false;
-    m_controlPressed = false;
-    m_altPressed = false;
-    m_superPressed = false;
+    m_leftShiftPressed = false;
+    m_rightShiftPressed = false;
+    m_leftControlPressed = false;
+    m_rightControlPressed = false;
+    m_leftAltPressed = false;
+    m_rightAltPressed = false;
+    m_leftSuperPressed = false;
+    m_rightSuperPressed = false;
     m_capsPressed = false;
 
     // build virtual key map
@@ -175,7 +178,10 @@ OSXKeyState::mapModifiersFromOSX(UInt32 mask) const
     if ((mask & kCGEventFlagMaskControl) != 0) {
         outMask |= KeyModifierControl;
     }
-    if ((mask & kCGEventFlagMaskAlternate) != 0) {
+    if ((mask & kCGEventFlagMaskAlternate) != 0 && (mask & NX_DEVICERALTKEYMASK) != 0) {
+        outMask |= KeyModifierAltGr;
+    }
+    if ((mask & kCGEventFlagMaskAlternate) != 0 && (mask & NX_DEVICERALTKEYMASK) == 0) {
         outMask |= KeyModifierAlt;
     }
     if ((mask & kCGEventFlagMaskCommand) != 0) {
@@ -339,20 +345,32 @@ OSXKeyState::getModifierStateAsOSXFlags()
 {
     CGEventFlags modifiers = 0;
     
-    if (m_shiftPressed) {
-        modifiers |= kCGEventFlagMaskShift;
+    if (m_leftShiftPressed) {
+        modifiers |= kCGEventFlagMaskShift | NX_DEVICELSHIFTKEYMASK;
+    }
+    if (m_rightShiftPressed) {
+        modifiers |= kCGEventFlagMaskShift | NX_DEVICERSHIFTKEYMASK;
     }
     
-    if (m_controlPressed) {
-        modifiers |= kCGEventFlagMaskControl;
+    if (m_leftControlPressed) {
+        modifiers |= kCGEventFlagMaskControl | NX_DEVICELCTLKEYMASK;
+    }
+    if (m_rightControlPressed) {
+        modifiers |= kCGEventFlagMaskControl | NX_DEVICERCTLKEYMASK;
     }
     
-    if (m_altPressed) {
-        modifiers |= kCGEventFlagMaskAlternate;
+    if (m_leftAltPressed) {
+        modifiers |= kCGEventFlagMaskAlternate | NX_DEVICELALTKEYMASK;
+    }
+    if (m_rightAltPressed) {
+        modifiers |= kCGEventFlagMaskAlternate | NX_DEVICERALTKEYMASK;
     }
     
-    if (m_superPressed) {
-        modifiers |= kCGEventFlagMaskCommand;
+    if (m_leftSuperPressed) {
+        modifiers |= kCGEventFlagMaskCommand | NX_DEVICELCMDKEYMASK;
+    }
+    if (m_rightSuperPressed) {
+        modifiers |= kCGEventFlagMaskCommand | NX_DEVICERCMDKEYMASK;
     }
     
     if (m_capsPressed) {
@@ -379,6 +397,9 @@ OSXKeyState::pollActiveModifiers() const
     }
     if ((mask & optionKey) != 0) {
         outMask |= KeyModifierAlt;
+    }
+    if ((mask & rightOptionKey) != 0) {
+        outMask |= KeyModifierAltGr;
     }
     if ((mask & cmdKey) != 0) {
         outMask |= KeyModifierSuper;
@@ -513,28 +534,48 @@ OSXKeyState::postHIDVirtualKey(const UInt8 virtualKeyCode,
 
     switch (virtualKeyCode)
     {
-    case s_shiftVK:
-    case s_superVK:
-    case s_altVK:
-    case s_controlVK:
+    case kVK_Shift:
+    case kVK_RightShift:
+    case kVK_Command:
+    case kVK_RightCommand:
+    case kVK_Option:
+    case kVK_RightOption:
+    case kVK_Control:
+    case kVK_RightControl:
     case s_capsLockVK:
         switch (virtualKeyCode)
         {
-        case s_shiftVK:
-                modifiersDelta = NX_SHIFTMASK;
-                m_shiftPressed = postDown;
+        case kVK_Shift:
+                modifiersDelta = NX_DEVICELSHIFTKEYMASK;
+                m_leftShiftPressed = postDown;
                 break;
-        case s_superVK:
-                modifiersDelta = NX_COMMANDMASK;
-                m_superPressed = postDown;
+        case kVK_RightShift:
+                modifiersDelta = NX_DEVICERSHIFTKEYMASK;
+                m_rightShiftPressed = postDown;
                 break;
-        case s_altVK:
-                modifiersDelta = NX_ALTERNATEMASK;
-                m_altPressed = postDown;
+        case kVK_Command:
+                modifiersDelta = NX_DEVICELCMDKEYMASK;
+                m_leftSuperPressed = postDown;
                 break;
-        case s_controlVK:
-                modifiersDelta = NX_CONTROLMASK;
-                m_controlPressed = postDown;
+        case kVK_RightCommand:
+                modifiersDelta = NX_DEVICERCMDKEYMASK;
+                m_rightSuperPressed = postDown;
+                break;
+        case kVK_Option:
+                modifiersDelta = NX_DEVICELALTKEYMASK;
+                m_leftAltPressed = postDown;
+                break;
+        case kVK_RightOption:
+                modifiersDelta = NX_DEVICERALTKEYMASK;
+                m_rightAltPressed = postDown;
+                break;
+        case kVK_Control:
+                modifiersDelta = NX_DEVICELCTLKEYMASK;
+                m_leftControlPressed = postDown;
+                break;
+        case kVK_RightControl:
+                modifiersDelta = NX_DEVICERCTLKEYMASK;
+                m_rightControlPressed = postDown;
                 break;
         case s_capsLockVK:
                 modifiersDelta = NX_ALPHASHIFTMASK;
@@ -543,6 +584,19 @@ OSXKeyState::postHIDVirtualKey(const UInt8 virtualKeyCode,
         }
         
         // update the modifier bit
+        modifiers &= ~(NX_SHIFTMASK | NX_COMMANDMASK | NX_ALTERNATEMASK | NX_CONTROLMASK);
+        if (m_leftShiftPressed || m_rightShiftPressed) {
+            modifiers |= NX_SHIFTMASK;
+        }
+        if (m_leftSuperPressed || m_rightSuperPressed) {
+            modifiers |= NX_COMMANDMASK;
+        }
+        if (m_leftAltPressed || m_rightAltPressed) {
+            modifiers |= NX_ALTERNATEMASK;
+        }
+        if (m_leftControlPressed || m_rightControlPressed) {
+            modifiers |= NX_CONTROLMASK;
+        }
         if (postDown) {
             modifiers |= modifiersDelta;
         }
@@ -805,6 +859,10 @@ OSXKeyState::handleModifierKeys(void* target,
     }
     if ((changed & KeyModifierAlt) != 0) {
         handleModifierKey(target, s_altVK, kKeyAlt_L,
+                            (newMask & KeyModifierAlt) != 0, newMask);
+    }
+    if ((changed & KeyModifierAltGr) != 0) {
+        handleModifierKey(target, s_altVK, kKeyAltGr,
                             (newMask & KeyModifierAlt) != 0, newMask);
     }
     if ((changed & KeyModifierSuper) != 0) {

@@ -172,9 +172,13 @@ private:
     mutable UInt32        m_deadKeyState;
     GroupList            m_groups;
     GroupMap            m_groupMap;
-    bool                m_shiftPressed;
-    bool                m_controlPressed;
-    bool                m_altPressed;
-    bool                m_superPressed;
+    bool                m_leftShiftPressed;
+    bool                m_rightShiftPressed;
+    bool                m_leftControlPressed;
+    bool                m_rightControlPressed;
+    bool                m_leftAltPressed;
+    bool                m_rightAltPressed;
+    bool                m_leftSuperPressed;
+    bool                m_rightSuperPressed;
     bool                m_capsPressed;
 };
